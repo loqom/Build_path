@@ -1,6 +1,5 @@
 fastapi
 uvicorn
-python-dotenv
 pydantic
 pydantic-settings
 langchain
@@ -12,5 +11,3 @@ chromadb
 mistralai
 tavily-python
 httpx
-beautifulsoup4
-requests
