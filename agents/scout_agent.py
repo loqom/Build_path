@@ -67,7 +67,7 @@ async def scout_agent(state:dict)->dict:
         status="completed",
         message=f"Found {len(pain_points)} pain points",
         output=json.dumps(pain_points),
-        isComplete=True
+        isComplete=False
     ))
 
     return { **state, "pain_points": pain_points }

@@ -46,12 +46,16 @@ Single function that POSTs agent updates back to Node.js. Called by every agent 
 
 agents/scout_agent.py
 First agent. Takes user's tech stack and goal as input. Calls scraper.py to fetch real posts from Reddit/GH/HN. Passes raw posts through Mistral LLM to extract and summarize genuine pain points. Returns structured list of pain points. Calls node_callback with status updates.
+
 agents/clustering_agent.py
 Second agent. Takes pain points from Scout. Embeds each one using embeddings.py, stores in ChromaDB. Groups semantically similar pain points into clusters using cosine similarity. Returns 5-8 themed clusters. Calls node_callback.
+
 agents/match_agent.py
 Third agent. Takes clusters + user's tech stack and skill level. Scores each cluster against the user profile using Mistral LLM — how buildable is this given their stack? Ranks clusters by match score. Returns top 3-5 matched problems. Calls node_callback.
+
 agents/validator_agent.py
 Fourth agent. Takes top matched problems. For each one, uses Tavily to search if solutions already exist, how saturated the space is, and whether there's still a gap. Filters out oversaturated ideas. Returns validated problem list. Calls node_callback.
+
 agents/architect_agent.py
 Fifth and final agent. Takes validated problems. For each one, prompts Mistral to generate a full project spec — title, oneLiner, problemStatement, proposedSolution, techStack, matchScore, complexity, estimatedTime, MVP features, stretch features, and week-by-week roadmap. Returns structured JSON matching Node's Project model exactly. Calls node_callback with isComplete: true and full projects array.
 
