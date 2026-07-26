@@ -1,136 +1,358 @@
-##ARCHITECTURE
+# 🚀 BuildPath — AI-Powered Project Discovery Platform
 
-buildpath-python/
-├── main.py
-├── requirements.txt
-├── .env
-├── agents/
-│   ├── scout_agent.py
-│   ├── clustering_agent.py
-│   ├── match_agent.py
-│   ├── validator_agent.py
-│   └── architect_agent.py
-├── pipeline/
-│   └── graph.py
-├── services/
-│   ├── scraper.py
-│   ├── embeddings.py
-│   └── node_callback.py
-├── models/
-│   └── schemas.py
-└── config/
-    └── settings.py
+> Find real unsolved problems from the internet. Get a project scoped to your exact skills.
 
+![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
+![MongoDB](https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white)
+![LangGraph](https://img.shields.io/badge/LangGraph-FF6B6B?style=for-the-badge)
 
-##File Descriptions
+---
 
-main.py
-FastAPI entry point. Has one endpoint POST /pipeline/run that receives the request from Node (sessionId, techStack, skillLevel, timeAvailable, goal), validates it using Pydantic schemas, and triggers the LangGraph pipeline in the background using BackgroundTasks. Returns { status: "started" } immediately so Node isn't kept waiting.
+## 📌 What is BuildPath?
 
-config/settings.py
-Loads all environment variables using pydantic-settings. Every other file imports from here instead of calling os.getenv() directly. Keeps env access centralized.
+BuildPath is a full-stack AI platform that solves the **blank canvas problem** every developer faces — *"I have skills but I don't know what to build."*
 
-models/schemas.py
-Pydantic models for request/response validation. Defines what a valid pipeline request looks like, what an agent output looks like, and what the final project spec structure is. Acts as the type system for the entire microservice.
+Instead of generating generic ideas from thin air, BuildPath runs a **five-agent AI pipeline** that:
 
-services/scraper.py
-Contains all scraping logic. Uses Tavily API to search Reddit, GitHub Issues, and Hacker News for posts matching developer pain points. Returns raw list of posts with title, body, url, upvotes. Called by Scout Agent.
+1. Scrapes real developer complaints from Reddit and GitHub
+2. Clusters them semantically using vector embeddings
+3. Matches the best problems to your specific tech stack
+4. Validates that no solution already exists
+5. Generates a fully scoped project spec with a week-by-week roadmap
 
+**Every idea is backed by real human pain from the internet — not an AI guess.**
 
-services/embeddings.py
-Handles all ChromaDB operations. Initializes the ChromaDB client and collection, embeds text using Mistral's embedding model, stores embeddings, and queries for similar content. Called by Clustering Agent.
+---
 
+## 🎯 The Problem It Solves
 
-services/node_callback.py
-Single function that POSTs agent updates back to Node.js. Called by every agent after it finishes. Uses httpx for async HTTP. Sends agentName, status, message, output, isComplete, and projects (on final call).
+| Existing Solution | Why It Fails |
+|---|---|
+| Ask ChatGPT for ideas | Hallucinated, generic, same output for everyone |
+| Browse Reddit manually | Hours of effort, no structure, no stack matching |
+| Google "project ideas" | Same 10 tutorial projects repeated everywhere |
+| Ask friends/mentors | Limited perspective, no data validation |
 
-agents/scout_agent.py
-First agent. Takes user's tech stack and goal as input. Calls scraper.py to fetch real posts from Reddit/GH/HN. Passes raw posts through Mistral LLM to extract and summarize genuine pain points. Returns structured list of pain points. Calls node_callback with status updates.
+---
 
-agents/clustering_agent.py
-Second agent. Takes pain points from Scout. Embeds each one using embeddings.py, stores in ChromaDB. Groups semantically similar pain points into clusters using cosine similarity. Returns 5-8 themed clusters. Calls node_callback.
+## ✨ Features
 
-agents/match_agent.py
-Third agent. Takes clusters + user's tech stack and skill level. Scores each cluster against the user profile using Mistral LLM — how buildable is this given their stack? Ranks clusters by match score. Returns top 3-5 matched problems. Calls node_callback.
+- 🔍 **Real internet scraping** — Tavily searches Reddit and GitHub for genuine pain points
+- 🧠 **Semantic clustering** — Mistral embeddings + ChromaDB group similar problems
+- 🎯 **Stack matching** — Scores each problem against your exact tech stack and skill level
+- ✅ **Idea validation** — Checks if solutions already exist before suggesting
+- 📋 **Complete project specs** — Title, problem statement, solution, tech stack, MVP features
+- 🗓️ **Week-by-week roadmap** — Tailored to your available time
+- ⚡ **Live pipeline streaming** — Watch each agent work in real time via SSE
+- 💾 **Save and revisit** — Save favorite ideas, view past pipeline runs
 
-agents/validator_agent.py
-Fourth agent. Takes top matched problems. For each one, uses Tavily to search if solutions already exist, how saturated the space is, and whether there's still a gap. Filters out oversaturated ideas. Returns validated problem list. Calls node_callback.
+---
 
-agents/architect_agent.py
-Fifth and final agent. Takes validated problems. For each one, prompts Mistral to generate a full project spec — title, oneLiner, problemStatement, proposedSolution, techStack, matchScore, complexity, estimatedTime, MVP features, stretch features, and week-by-week roadmap. Returns structured JSON matching Node's Project model exactly. Calls node_callback with isComplete: true and full projects array.
+## 🏗️ Architecture
 
-pipeline/graph.py
-LangGraph StateGraph that wires all five agents in sequence. Defines the shared state object that passes data between agents. Each agent is a node, connected by edges in order: Scout → Clustering → Match → Validator → Architect. Entry point called by main.py.
+```
+React Frontend
+      │
+      ▼
+Node.js + Express (REST API + SSE)
+      │
+      ├── MongoDB Atlas (users, sessions, projects)
+      │
+      └── Python FastAPI Microservice
+               │
+               ├── LangGraph (agent orchestration)
+               ├── Groq — Llama 3.3 70B (LLM)
+               ├── Mistral AI (embeddings only)
+               ├── ChromaDB (vector storage)
+               └── Tavily API (web scraping)
+```
 
-requirements.txt
-fastapi
-uvicorn
-python-dotenv
-pydantic
-pydantic-settings
-langchain
-langchain-mistralai
-langgraph
-chromadb
-mistralai
-tavily-python
-httpx
-beautifulsoup4
-requests
+---
 
-Build order:
-1. main.py
-2. config/settings.py
-3. models/schemas.py
-4. services/node_callback.py
-5. services/scraper.py
-6. services/embeddings.py
-7. agents/ (one by one)
-8. pipeline/graph.py
+## 🤖 Agent Pipeline
 
+```
+POST /pipeline/run
+        │
+        ▼
+🔍 Scout Agent
+   Tavily scrapes Reddit + GitHub → Groq extracts pain points
+        │
+        ▼
+🗂️ Clustering Agent
+   Mistral embeds pain points → ChromaDB → Groq clusters into themes
+        │
+        ▼
+🎯 Match Agent
+   Groq scores each cluster against your tech stack + skill level
+        │
+        ▼
+✅ Validator Agent
+   Tavily checks existing solutions → Groq filters saturated ideas
+        │
+        ▼
+🏗️ Architect Agent
+   Groq generates full project spec + roadmap → sent to Node
+        │
+        ▼
+📊 Results Dashboard
+   3-5 ranked project ideas with complete build plans
+```
 
-Agents:
-1. Scout Agent
+Each agent streams live status updates to the frontend via **Server Sent Events (SSE)**.
 
-Job: Go out to the internet and find real pain.
+---
 
-Takes the user's tech stack and goal. Uses scraper.py to fetch real posts from Reddit and GitHub. Then passes all that raw content through Mistral LLM to extract clean, structured pain points — filters out noise, keeps only genuine developer frustrations.
+## 🛠️ Tech Stack
 
-Input: techStack, skillLevel, goal, sessionId
-Output: List of 20-30 structured pain points with title, description, source
+### Backend (Node.js)
+| Technology | Purpose |
+|---|---|
+| Node.js + Express | REST API, auth, session management |
+| MongoDB Atlas | Users, sessions, saved projects |
+| JWT + HTTP-only Cookies | Secure authentication |
+| Server Sent Events | Real-time agent status streaming |
+| axios | HTTP client for Python service calls |
 
-2. Clustering Agent
+### AI Microservice (Python)
+| Technology | Purpose |
+|---|---|
+| FastAPI + uvicorn | Python microservice entry point |
+| LangGraph | Multi-agent orchestration |
+| Groq (Llama 3.3 70B) | LLM for all agent reasoning |
+| Mistral AI (mistral-embed) | Vector embeddings |
+| ChromaDB | Local vector database |
+| Tavily API | Web scraping (Reddit, GitHub, HN) |
+| httpx | Async HTTP callbacks to Node |
+| Pydantic | Request/response validation |
 
-Job: Group similar pain points together.
+### Frontend
+| Technology | Purpose |
+|---|---|
+| React | UI framework |
+| Tailwind CSS | Styling |
 
-Takes the raw pain points from Scout. Embeds each one using Mistral embeddings via embeddings.py, stores them in ChromaDB. Then groups semantically similar ones into clusters — so "authentication is annoying", "JWT is confusing", "session management sucks" all become one cluster called something like "Auth & Session Management pain."
+---
 
-Input: List of pain points from Scout
-Output: 5-8 named clusters, each containing related pain points
+## 📁 Project Structure
 
-3. Match Agent
+```
+buildpath/
+├── buildpath-backend/          # Node.js Backend
+│   ├── src/
+│   │   ├── config/
+│   │   │   └── database.js
+│   │   ├── models/
+│   │   │   ├── user.js
+│   │   │   ├── session.js
+│   │   │   └── projects.js
+│   │   ├── routes/
+│   │   │   ├── auth.route.js
+│   │   │   ├── pipeline.route.js
+│   │   │   └── project.route.js
+│   │   ├── controllers/
+│   │   │   ├── auth.controller.js
+│   │   │   ├── pipeline.controller.js
+│   │   │   └── project.controller.js
+│   │   ├── middlewares/
+│   │   │   └── auth.middleware.js
+│   │   └── services/
+│   │       └── python.service.js
+│   ├── .env.example
+│   └── server.js
+│
+└── buildpath-python/           # Python AI Microservice
+    ├── agents/
+    │   ├── scout_agent.py
+    │   ├── clustering_agent.py
+    │   ├── match_agent.py
+    │   ├── validator_agent.py
+    │   └── architect_agent.py
+    ├── pipeline/
+    │   └── graph.py
+    ├── services/
+    │   ├── scraper.py
+    │   ├── embeddings.py
+    │   └── node_callback.py
+    ├── models/
+    │   └── schemas.py
+    ├── config/
+    │   └── settings.py
+    ├── main.py
+    ├── .env.example
+    └── requirements.txt
+```
 
-Job: Find which problems you can actually solve.
+---
 
-Takes the clusters and scores each one against the user's specific profile using Mistral LLM. Asks: "Given this person knows Node.js and React at intermediate level with 1 month available — how buildable is this problem for them?" Returns a ranked list with match scores.
+## 🚀 Getting Started
 
-Input: Problem clusters + user's techStack, skillLevel, timeAvailable, goal
-Output: Top 3-5 clusters ranked by match score (0-100)
+### Prerequisites
+- Node.js v18+
+- Python 3.11+
+- MongoDB Atlas account (free M0 tier)
+- API Keys: Mistral AI, Groq, Tavily
 
-4. Validator Agent
+### 1. Clone the repo
+```bash
+git clone https://github.com/yourusername/buildpath.git
+cd buildpath
+```
 
-Job: Make sure the idea is actually original.
+### 2. Setup Node.js Backend
+```bash
+cd buildpath-backend
+npm install
+cp .env.example .env
+# fill in your values in .env
+npm run dev
+```
 
-Takes the top matched problems and for each one, uses Tavily to search if solutions already exist — checking GitHub, ProductHunt, existing SaaS tools. Filters out oversaturated ideas. Only passes through problems where a genuine gap still exists.
+### 3. Setup Python Microservice
+```bash
+cd buildpath-python
+python -m venv .venv
 
-Input: Top 3-5 matched problems
-Output: Validated problems with saturation level and gap assessment
+# Windows
+.venv\Scripts\activate
 
-5. Architect Agent
+# Linux/Mac
+source .venv/bin/activate
 
-Job: Turn a validated problem into a complete build plan.
+pip install -r requirements.txt
+cp .env.example .env
+# fill in your values in .env
+uvicorn main:app --reload --port 8000
+```
 
-The final and heaviest agent. For each validated problem, prompts Mistral to generate a complete project spec — title, one-liner, problem statement, proposed solution, recommended tech stack, match score, complexity, estimated time, MVP features, stretch features, and a week-by-week roadmap with specific tasks. Output must exactly match the MongoDB Project schema so Node can save it directly.
+### 4. Environment Variables
 
-Input: Validated problems + full user profile
-Output: 3-5 complete ProjectSpec objects → sent to Node with isComplete: true
+**Node.js `.env`**
+```
+PORT=5000
+MONGO_URI=your_mongodb_connection_string
+JWT_SECRET=your_jwt_secret
+PYTHON_SERVICE_URL=http://localhost:8000
+```
+
+**Python `.env`**
+```
+MISTRAL_API_KEY=your_mistral_key
+TAVILY_API_KEY=your_tavily_key
+GROQ_API_KEY=your_groq_key
+NODE_CALLBACK_URL=http://localhost:5000/api/pipeline/callback
+CHROMA_DB_PATH=./chroma_db
+```
+
+---
+
+## 📡 API Reference
+
+### Auth — `/api/auth`
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/register` | No | Create account |
+| POST | `/login` | No | Login, set cookie |
+| GET | `/me` | Yes | Get profile |
+| POST | `/logout` | Yes | Clear session |
+
+### Pipeline — `/api/pipeline`
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/start` | Yes | Trigger pipeline |
+| GET | `/stream/:sessionId` | Yes | SSE live updates |
+| POST | `/callback/:sessionId` | No | Python agent callbacks |
+| GET | `/status/:sessionId` | Yes | Pipeline status |
+| GET | `/results/:sessionId` | Yes | Final project ideas |
+
+### Projects — `/api/projects`
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/` | Yes | All saved projects |
+| GET | `/:id` | Yes | Single project + roadmap |
+| POST | `/save` | Yes | Save a project |
+| DELETE | `/:id` | Yes | Delete a project |
+
+---
+
+## 🔄 How SSE Streaming Works
+
+```
+1. Frontend hits POST /pipeline/start → gets sessionId
+2. Frontend opens GET /pipeline/stream/:sessionId (SSE)
+3. Python agents run in background
+4. Each agent POSTs to /pipeline/callback/:sessionId when done
+5. Node pushes update to open SSE connection
+6. Frontend receives event and updates agent status card live
+7. On completion → frontend fetches results
+```
+
+---
+
+## 🗄️ Data Models
+
+### User
+```json
+{
+  "firstName": "string",
+  "email": "string (unique)",
+  "password": "hashed",
+  "techStack": ["Node.js", "React"],
+  "skillLevel": "beginner | intermediate | advanced",
+  "goal": "placement | freelance | startup | learning"
+}
+```
+
+### Session
+```json
+{
+  "userId": "ObjectId",
+  "status": "pending | running | completed | failed",
+  "input": { "techStack": [], "skillLevel": "", "timeAvailable": "", "goal": "" },
+  "agentLogs": [{ "agentName": "", "status": "", "message": "", "output": "" }],
+  "results": ["ProjectId"]
+}
+```
+
+### Project
+```json
+{
+  "title": "string",
+  "oneLiner": "string",
+  "problemStatement": "string",
+  "proposedSolution": "string",
+  "techStack": ["string"],
+  "matchScore": 87,
+  "complexity": "easy | medium | hard",
+  "estimatedTime": "1 month",
+  "features": { "mvp": [], "stretch": [] },
+  "roadmap": [{ "week": 1, "title": "", "tasks": [] }],
+  "isSaved": false
+}
+```
+
+---
+
+## 🗓️ Build Roadmap
+
+- [x] Node.js backend — auth, models, pipeline routes, project routes
+- [x] Python microservice — FastAPI, all 5 agents, LangGraph orchestration
+- [ ] End-to-end integration testing
+- [ ] React frontend
+- [ ] Deployment
+
+---
+
+## 👨‍💻 Author
+
+**Om Vishwakarma** — 3rd Year B.Tech CSE  
+Built as a flagship placement project demonstrating MERN + GenAI engineering.
+
+---
+
+## 📄 License
+
+MIT
