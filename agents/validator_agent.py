@@ -20,7 +20,7 @@ tavily=TavilyClient(api_key=settings.TAVILY_API_KEY)
 llm=ChatGroq(api_key=settings.GROQ_API_KEY,model="llama-3.3-70b-versatile",temperature=0.4)
 
 async def validate_agent(state:dict)->dict:
-    
+    print("=== validator STARTED ===")
     matched = state['matched']
     sessionId=state['sessionId']
     await send_callback(AgentUpdate(
@@ -34,9 +34,9 @@ async def validate_agent(state:dict)->dict:
     validated = []
     for cluster in matched:
         queries = [
-            f"existing tools for {cluster['name']} developers",
-            f"saas product solving {cluster['name']} problem",
-            f"github open source {cluster['name']} solution",
+           f"existing tools for {cluster.get('name', 'Unknown')} developers",
+           f"saas product solving {cluster.get('name', 'Unknown')} problem",
+           f"github open source {cluster.get('name', 'Unknown')} solution",
         ]
 
         results = []
@@ -48,9 +48,8 @@ async def validate_agent(state:dict)->dict:
 
 
         prompt=f"""You are evaluating whether a developer problem is worth building a solution for.
-            Problem Cluster: {cluster['name']}
-            Description: {cluster['description']}
-
+            Problem Cluster: {cluster.get('name', 'Unknown')}
+            Description: {cluster.get('description', cluster.get('reasoning', 'No description available'))}
             Existing solutions found online:
             {results}
 

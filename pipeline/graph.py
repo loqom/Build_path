@@ -12,9 +12,9 @@
 from langgraph.graph import StateGraph,START,END
 from typing import TypedDict
 from agents.architect_agent import architect_agent
-from agents.clustering_agent import clustering_agent
+from agents.clustering_agent import cluster_agent
 from agents.match_agent import match_agent
-from agents.validator_agent import validator_agent
+from agents.validator_agent import validate_agent
 from agents.scout_agent import scout_agent
 
 
@@ -33,9 +33,9 @@ class PipelineState(TypedDict):
 graph=StateGraph(PipelineState)
 
 graph.add_node("scout", scout_agent)
-graph.add_node("clustering", clustering_agent)
+graph.add_node("clustering", cluster_agent)
 graph.add_node("match", match_agent)
-graph.add_node("validator", validator_agent)
+graph.add_node("validator", validate_agent)
 graph.add_node("architect", architect_agent)
 
 graph.add_edge(START,"scout")

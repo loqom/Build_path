@@ -16,6 +16,7 @@ import json
 llm=ChatGroq(api_key=settings.GROQ_API_KEY,model="llama-3.3-70b-versatile",temperature=0.5)
 
 async def architect_agent(state:dict)->dict:
+    print("=== architect STARTED ===")
     validated=state["validated"]
     sessionId=state["sessionId"]
     techStack=state["techStack"]
@@ -44,9 +45,10 @@ async def architect_agent(state:dict)->dict:
         - Goal: {goal}
 
         Validated Problem:
-        - Name: {cluster['name']}
-        - Description: {cluster['description']}
-        - Gap Analysis: {cluster['gapAnalysis']}
+        - Name: {cluster.get('name', 'Unknown')}
+        - Description: {cluster.get('gapAnalysis', cluster.get('reasoning', 'No description'))}
+        - Verdict: {cluster.get('verdict', '')}
+        - Gap Analysis: {cluster.get('gapAnalysis', '')}
 
         Generate a complete project specification and return a JSON object with exactly these fields:
         - title: creative project name
@@ -89,7 +91,8 @@ async def architect_agent(state:dict)->dict:
         status="completed",
         message="Finished the pipeline",
         output=json.dumps(projects),
-        isComplete=True
+        isComplete=True,
+        projects=projects
     ))
 
     return { **state, "projects": projects }

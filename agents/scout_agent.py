@@ -17,6 +17,7 @@ import json
 
 llm=ChatGroq(api_key=settings.GROQ_API_KEY,model="llama-3.3-70b-versatile", temperature=0.4)
 async def scout_agent(state:dict)->dict:
+    print("=== SCOUT STARTED ===")
     techStack=state["techStack"]
     sessionId=state["sessionId"]
     goal=state["goal"]

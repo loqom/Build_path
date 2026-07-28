@@ -18,6 +18,7 @@ import json
 llm=ChatGroq(api_key=settings.GROQ_API_KEY,model="llama-3.3-70b-versatile", temperature=0.4)
 
 async def cluster_agent(state:dict)->dict:
+    print("=== CLUSTERING STARTED ===")
     pain_points=state["pain_points"]
     sessionId=state["sessionId"]
     await send_callback(AgentUpdate(
