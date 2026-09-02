@@ -9,14 +9,13 @@
 # 6. Return { **state, "matched": matched }
 
 
-from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
 from services.node_callback import send_callback
+from services.llm import llm
+from services.utils import parse_llm_json
 from models.schemas import AgentUpdate
 from config.settings import settings
 import json
-
-llm=ChatGroq(api_key=settings.GROQ_API_KEY,model="llama-3.3-70b-versatile",temperature=0.3)
 
 async def match_agent(state:dict)->dict:
     print("=== MATCH STARTED ===")
@@ -28,7 +27,7 @@ async def match_agent(state:dict)->dict:
     goal=state["goal"]
     await send_callback(AgentUpdate(
         sessionId=sessionId,
-        agentName="match-agent",
+        agentName="match",
         status="running",
         message="Finding perfect project for your domain",
         isComplete=False
@@ -60,19 +59,14 @@ async def match_agent(state:dict)->dict:
 
     Return top 5 clusters ranked by matchScore as a JSON array only. No explanation, no markdown.
     """
-    llm_response=llm.invoke([HumanMessage(content=prompt)])
-    content = llm_response.content.strip()
-    if content.startswith("```"):
-        content = content.split("```")[1]
-        if content.startswith("json"):
-            content = content[4:]
-    clusters = json.loads(content.strip())
+    llm_response = await llm.ainvoke([HumanMessage(content=prompt)])
+    matched_clusters = parse_llm_json(llm_response.content)
     await send_callback(AgentUpdate(
         sessionId=sessionId,
-        agentName="match-agent",
+        agentName="match",
         status="completed",
         message="Matched top clusters",
-        output=json.dumps(clusters),
+        output=json.dumps(matched_clusters),
         isComplete=False
     ))
-    return {**state, "matched": clusters}
+    return {**state, "matched": matched_clusters}

@@ -7,15 +7,14 @@
 # 7. Return { **state, "clusters": clusters }
 
 
-from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
 from services.node_callback import send_callback
 from services.embeddings import add_documents
+from services.llm import llm
+from services.utils import parse_llm_json
 from models.schemas import AgentUpdate
 from config.settings import settings
 import json
-
-llm=ChatGroq(api_key=settings.GROQ_API_KEY,model="llama-3.3-70b-versatile", temperature=0.4)
 
 async def cluster_agent(state:dict)->dict:
     print("=== CLUSTERING STARTED ===")
@@ -23,7 +22,7 @@ async def cluster_agent(state:dict)->dict:
     sessionId=state["sessionId"]
     await send_callback(AgentUpdate(
         sessionId=sessionId,
-        agentName="cluster",
+        agentName="clustering",
         status="running",
         message="Pushing into Vector database",
         isComplete=False
@@ -44,14 +43,9 @@ async def cluster_agent(state:dict)->dict:
     
     Return a JSON array only. No explanation, no markdown."""
 
-    llm_response=llm.invoke([HumanMessage(content=prompt)])
+    llm_response = await llm.ainvoke([HumanMessage(content=prompt)])
 
-    content = llm_response.content.strip()
-    if content.startswith("```"):
-        content = content.split("```")[1]
-        if content.startswith("json"):
-            content = content[4:]
-    clusters = json.loads(content.strip())
+    clusters = parse_llm_json(llm_response.content)
     await send_callback(AgentUpdate(
         sessionId=sessionId,
         agentName="clustering",

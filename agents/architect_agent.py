@@ -6,14 +6,13 @@
 # 6. Send final callback with isComplete=True + projects array
 # 7. Return { **state, "projects": projects }
 
-from langchain_groq import ChatGroq
 from config.settings import settings
 from services.node_callback import send_callback
+from services.llm import llm
+from services.utils import parse_llm_json
 from models.schemas import AgentUpdate
 from langchain_core.messages import HumanMessage
 import json
-
-llm=ChatGroq(api_key=settings.GROQ_API_KEY,model="llama-3.3-70b-versatile",temperature=0.5)
 
 async def architect_agent(state:dict)->dict:
     print("=== architect STARTED ===")
@@ -52,6 +51,7 @@ async def architect_agent(state:dict)->dict:
 
         Generate a complete project specification and return a JSON object with exactly these fields:
         - title: creative project name
+        - sector: one of "DevTools", "AI/ML", "Fintech", "Web3", "Healthtech", "E-Commerce", "Security" — pick the best match
         - oneLiner: one sentence describing what it does
         - problemStatement: 2-3 sentences on the real problem this solves
         - proposedSolution: 2-3 sentences on how the project solves it
@@ -74,15 +74,13 @@ async def architect_agent(state:dict)->dict:
 
         Return JSON only. No explanation, no markdown."""
 
-        llm_response=llm.invoke([HumanMessage(content=prompt)])
+        llm_response = await llm.ainvoke([HumanMessage(content=prompt)])
 
-        content = llm_response.content.strip()
-        if content.startswith("```"):
-            content = content.split("```")[1]
-            if content.startswith("json"):
-                content = content[4:]
-        final_projects = json.loads(content.strip())        
-        projects.append(final_projects)
+        final_projects = parse_llm_json(llm_response.content)        
+        if isinstance(final_projects, dict):
+            projects.append(final_projects)
+        elif isinstance(final_projects, list):
+            projects.extend(final_projects)
 
 
     await send_callback(AgentUpdate(

@@ -7,15 +7,15 @@
 # Input: techStack, skillLevel, goal, sessionId
 # Output: List of 20-30 structured pain points with title, description, source
 
-from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
 from services.scraper import scrape_pain_points
 from services.node_callback import send_callback
+from services.llm import llm
+from services.utils import parse_llm_json
 from models.schemas import AgentUpdate
 from config.settings import settings
 import json
 
-llm=ChatGroq(api_key=settings.GROQ_API_KEY,model="llama-3.3-70b-versatile", temperature=0.4)
 async def scout_agent(state:dict)->dict:
     print("=== SCOUT STARTED ===")
     techStack=state["techStack"]
@@ -30,7 +30,7 @@ async def scout_agent(state:dict)->dict:
         isComplete=False
     ))
 
-    response=scrape_pain_points(techStack,goal)
+    response = await scrape_pain_points(techStack)
 
     combined="\n\n".join([
         f"Title:{p['title']}\nContent:{p['content']}"
@@ -53,14 +53,9 @@ async def scout_agent(state:dict)->dict:
     Return a JSON array only. No explanation, no markdown."""
 
 
-    llm_response=llm.invoke([HumanMessage(content=prompt)])
+    llm_response = await llm.ainvoke([HumanMessage(content=prompt)])
 
-    content = llm_response.content.strip()
-    if content.startswith("```"):
-        content = content.split("```")[1]
-        if content.startswith("json"):
-            content = content[4:]
-    pain_points = json.loads(content.strip())
+    pain_points = parse_llm_json(llm_response.content)
     
     await send_callback(AgentUpdate(
         sessionId=sessionId,

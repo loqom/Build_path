@@ -16,28 +16,3 @@ class AgentUpdate(BaseModel):
     output: Optional[str] = None
     isComplete: bool = False
     projects: Optional[list] = None
-
-class RoadmapWeek(BaseModel):
-    week: int
-    title: str
-    tasks: list[str]
-
-class ProjectFeatures(BaseModel):
-    mvp: list[str]
-    stretch: list[str]
-
-class ProjectSpec(BaseModel):
-    title: str
-    oneLiner: str
-    problemStatement: str
-    proposedSolution: str
-    techStack: list[str]
-    matchScore: int        
-    complexity: str       
-    estimatedTime: str
-    features: ProjectFeatures
-    roadmap: list[RoadmapWeek]
-
-class PipelineResult(BaseModel):
-    sessionId: str
-    projects: list[ProjectSpec]

@@ -7,17 +7,17 @@
 # 5. Send completed callback
 # 6. Return { **state, "validated": validated }
 
-from langchain_groq import ChatGroq
+import asyncio
 from langchain_core.messages import HumanMessage
 from services.node_callback import send_callback
+from services.llm import llm
+from services.utils import parse_llm_json
 from models.schemas import AgentUpdate
 from config.settings import settings
 from tavily import TavilyClient
 import json
 
 tavily=TavilyClient(api_key=settings.TAVILY_API_KEY)
-
-llm=ChatGroq(api_key=settings.GROQ_API_KEY,model="llama-3.3-70b-versatile",temperature=0.4)
 
 async def validate_agent(state:dict)->dict:
     print("=== validator STARTED ===")
@@ -42,9 +42,13 @@ async def validate_agent(state:dict)->dict:
         results = []
 
         for query in queries:
-            res=tavily.search(query,max_results=3)
-            for item in res["results"]:
-                results.append(f"{item['title']}: {item['content'][:200]}")
+            try:
+                res = await asyncio.to_thread(tavily.search, query, max_results=3)
+                if isinstance(res, dict) and "results" in res:
+                    for item in res["results"]:
+                        results.append(f"{item.get('title', '')}: {item.get('content', '')[:200]}")
+            except Exception as e:
+                print(f"Validator Tavily search failed for query '{query}': {e}")
 
 
         prompt=f"""You are evaluating whether a developer problem is worth building a solution for.
@@ -63,13 +67,12 @@ async def validate_agent(state:dict)->dict:
 
             Return JSON only. No explanation, no markdown."""
 
-        llm_response=llm.invoke([(HumanMessage(content=prompt))])
-        content = llm_response.content.strip()
-        if content.startswith("```"):
-            content = content.split("```")[1]
-            if content.startswith("json"):
-                content = content[4:]
-        result = json.loads(content.strip())
+        llm_response = await llm.ainvoke([(HumanMessage(content=prompt))])
+        result = parse_llm_json(llm_response.content)
+        if isinstance(result, list) and result:
+            result = result[0]
+        if not isinstance(result, dict):
+            result = {}
         if result.get('isValid') == True:
             validated.append(result)
         
