@@ -37,7 +37,7 @@ app.add_middleware(
 
 async def run_with_timeout(data):
     try:
-        await asyncio.wait_for(run_agent_pipeline(data), timeout=120)
+        await asyncio.wait_for(run_agent_pipeline(data), timeout=300)
     except asyncio.TimeoutError:
         logger.error(f"Pipeline timed out for session {data.sessionId}")
         await send_callback(AgentUpdate(

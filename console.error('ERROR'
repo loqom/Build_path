@@ -1,0 +1,1 @@
+C:\Users\omgkp\OneDrive\Desktop\Path-Project\python-microservice>  "C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin\\..\python.exe" -IBm azure.cli containerapp exec --name buildpath-backend --resource-group buildpath-rg --command "node -e "require('http').get('http://buildpath-python:5000/health',r=,r.statusCode);r.on('data',d=,e=,e.message))""
