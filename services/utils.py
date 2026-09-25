@@ -2,22 +2,38 @@ import json
 import re
 
 def parse_llm_json(content: str):
-    content = content.strip()
     if not content:
         return []
-    if content.startswith("```"):
-        content = content.split("```")[1]
-        if content.startswith("json"):
-            content = content[4:]
-    content = content.strip()
-    content = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', content)
+    
+    cleaned = content.strip()
+    
+    # If code fence is present anywhere in content (e.g. conversational preamble + ```json ... ```)
+    if "```" in cleaned:
+        # Extract between first ``` and next ```
+        parts = cleaned.split("```")
+        if len(parts) >= 2:
+            fenced = parts[1].strip()
+            if fenced.lower().startswith("json"):
+                fenced = fenced[4:].strip()
+            cleaned = fenced
+    elif cleaned.startswith("```"):
+        cleaned = cleaned[3:]
+        if cleaned.lower().startswith("json"):
+            cleaned = cleaned[4:]
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+        cleaned = cleaned.strip()
+
+    cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', cleaned)
+
     try:
-        return json.loads(content)
+        return json.loads(cleaned)
     except json.JSONDecodeError:
-        content = content.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+        # Secondary fallback: normalize problematic whitespace / newlines
         try:
-            return json.loads(content)
+            normalized = cleaned.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+            return json.loads(normalized)
         except json.JSONDecodeError as e:
             print(f"JSON parse failed: {e}")
-            print(f"Raw content: {content[:300]}")
+            print(f"Raw content: {content}")
             return []

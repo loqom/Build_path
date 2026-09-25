@@ -27,6 +27,17 @@ async def cluster_agent(state:dict)->dict:
         message="Pushing into Vector database",
         isComplete=False
     ))
+    if not pain_points:
+        await send_callback(AgentUpdate(
+            sessionId=sessionId,
+            agentName="clustering",
+            status="completed",
+            message="No pain points found to cluster",
+            output=json.dumps([]),
+            isComplete=False
+        ))
+        return { **state, "clusters": [] }
+
     texts = [f"{p['title']} {p['description']}" for p in pain_points]
     add_documents(texts=texts,metadatas=pain_points)
     prompt=f"""You are grouping developer pain points into themes.

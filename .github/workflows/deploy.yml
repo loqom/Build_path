@@ -1,0 +1,130 @@
+name: BuildPath Python CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+# Concurrency protection: cancel in-progress PR builds, queue/sequence main deployments
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AZURE_RESOURCE_GROUP: buildpath-rg
+  AZURE_CONTAINER_APP: buildpath-python
+  AZURE_CONTAINER_REGISTRY: ca7fdbb90831acr
+  ACR_LOGIN_SERVER: ca7fdbb90831acr.azurecr.io
+  IMAGE_NAME: buildpath-python
+  HEALTH_CHECK_URL: https://buildpath-python.salmonwater-32d8ff10.eastasia.azurecontainerapps.io/health
+
+jobs:
+  validate:
+    name: Validate Python Syntax & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies & lint tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Syntax Compilation Check (py_compile)
+        run: |
+          echo "Compiling all Python files to detect syntax errors..."
+          python -m py_compile $(find . -name "*.py" -not -path "*/.*/*" -not -path "*/chroma_db/*")
+          echo "All Python source files passed compilation check."
+
+      - name: Linting with Flake8
+        run: |
+          echo "Running flake8 critical syntax/undefined name checks..."
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=.venv,__pycache__,chroma_db
+
+  build-and-deploy:
+    name: Build, Push & Deploy to Azure Container Apps
+    needs: validate
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Azure Login via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to Azure Container Registry
+        run: |
+          az acr login --name ${{ env.AZURE_CONTAINER_REGISTRY }}
+
+      - name: Build and Push Docker Image (Immutable Git SHA)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Deploy Image to Azure Container Apps
+        run: |
+          echo "Deploying immutable image ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}..."
+          az containerapp update \
+            --name ${{ env.AZURE_CONTAINER_APP }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --image ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Verify Deployment Health Check
+        run: |
+          echo "Running smoke test on ${{ env.HEALTH_CHECK_URL }}..."
+          max_attempts=30
+          delay=10
+          attempt=1
+          success=false
+
+          while [ $attempt -le $max_attempts ]; do
+            echo "Health check attempt $attempt/$max_attempts..."
+            http_code=$(curl -s -o /tmp/health_res.json -w "%{http_code}" "${{ env.HEALTH_CHECK_URL }}" || echo "000")
+            
+            if [ "$http_code" -eq 200 ]; then
+              echo "Health check passed with HTTP 200:"
+              cat /tmp/health_res.json
+              echo ""
+              success=true
+              break
+            else
+              echo "Health check returned HTTP $http_code. Waiting ${delay}s before retry..."
+              sleep $delay
+              attempt=$((attempt + 1))
+            fi
+          done
+
+          if [ "$success" != "true" ]; then
+            echo "ERROR: Deployment health check failed after $max_attempts attempts."
+            exit 1
+          fi
